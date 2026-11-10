@@ -54,8 +54,8 @@
       }
     },
     "switch": {
-      "prewarm": {
-        "name": "연결 예열"
+      "standby": {
+        "name": "연결 대기"
       }
     }
   }

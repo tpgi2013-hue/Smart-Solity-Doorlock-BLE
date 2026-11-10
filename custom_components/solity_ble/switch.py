@@ -1,4 +1,7 @@
-"""Switch platform for Solity BLE: hold a prewarmed BLE session.
+"""Switch platform for Solity BLE: connection standby.
+
+Holds a connected + authenticated BLE session ("standby") so the next command
+skips connection setup.
 
 On: connect + authenticate to the lock now and keep the session, so an open
 that follows (face recognition a few seconds after presence) skips the BLE
@@ -26,15 +29,15 @@ async def async_setup_entry(
     entry: SolityBleConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the Solity BLE prewarm switch."""
-    async_add_entities([SolityBlePrewarmSwitch(entry)])
+    """Set up the Solity BLE connection standby switch."""
+    async_add_entities([SolityBleStandbySwitch(entry)])
 
 
-class SolityBlePrewarmSwitch(SwitchEntity):
+class SolityBleStandbySwitch(SwitchEntity):
     """Hold a connected + authenticated BLE session while on."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "prewarm"
+    _attr_translation_key = "standby"
     _attr_icon = "mdi:bluetooth-connect"
     _attr_should_poll = False
 
@@ -63,7 +66,7 @@ class SolityBlePrewarmSwitch(SwitchEntity):
         try:
             await self._client.async_prewarm(PREWARM_MAX_SECONDS)
         except SolityBleError as err:
-            raise HomeAssistantError(f"BLE 예열 실패: {err}") from err
+            raise HomeAssistantError(f"BLE 연결 대기 실패: {err}") from err
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._client.async_release()
