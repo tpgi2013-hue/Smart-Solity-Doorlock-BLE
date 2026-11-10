@@ -2,7 +2,7 @@
 
 솔리티(SOLITY) 도어락의 **블루투스팩(BL-100C)** 에 Home Assistant의 블루투스 프록시를 거쳐 **직접** 연결해 여닫는 통합입니다. 클라우드·WiFi 모듈을 거치지 않아서 빠르고(연결 대기 중이면 명령 후 약 0.5초), 인터넷이 끊겨도 동작합니다.
 
-클라우드 API 방식 통합은 별도 저장소 [Smart-Solity-Doorlock](https://github.com/tpgi2013-hue/Smart-Solity-Doorlock)에 있으며, 이 통합과 서로 독립적입니다.
+클라우드 API 방식 통합은 별도 저장소 [Smart-Solity-Doorlock-Cloud](https://github.com/tpgi2013-hue/Smart-Solity-Doorlock-Cloud)에 있으며, 이 통합과 서로 독립적입니다.
 
 ## 기능
 
@@ -122,7 +122,7 @@ GATT 서비스 `48400001-…`, 쓰기 `48400002-…`, 알림 `48400003-…`.
 - 항상 0/알 수 없음이던 얼굴·정맥·지문 등록 수 센서 제거, 비밀번호 등록 수와 신호 세기(RSSI) 센서 추가.
 - 블루투스 출입 기록(`0x5D`) 읽기를 시도했으나 이 도어락은 기록을 비워 둬서 되돌림(이력에 남아 있음).
 
-이전 이력은 [Smart-Solity-Doorlock](https://github.com/tpgi2013-hue/Smart-Solity-Doorlock) 저장소의 `custom_components/solity_ble` 경로에서 개발되었고, 이 저장소로 커밋 이력 그대로 옮겨왔습니다.
+이전 이력은 [Smart-Solity-Doorlock-Cloud](https://github.com/tpgi2013-hue/Smart-Solity-Doorlock-Cloud) 저장소의 `custom_components/solity_ble` 경로에서 개발되었고, 이 저장소로 커밋 이력 그대로 옮겨왔습니다.
 
 ## 라이선스
 
