@@ -102,12 +102,19 @@ class SolityBleLock(CoordinatorEntity[SolityBleCoordinator], LockEntity):
         self._optimistic_unlocked = True
         self.async_write_ha_state()
 
+        async def _end_optimism() -> None:
+            # Read the real state first and only then drop the optimistic
+            # 'unlocked', so the entity never flashes 'locked' before the read.
+            try:
+                await self.coordinator.async_refresh()
+            finally:
+                self._optimistic_unlocked = False
+                self.async_write_ha_state()
+
         @callback
         def _relock(_now) -> None:
             self._cancel_relock = None
-            self._optimistic_unlocked = False
-            self.async_write_ha_state()
-            self.hass.async_create_task(self.coordinator.async_request_refresh())
+            self.hass.async_create_task(_end_optimism())
 
         self._cancel_relock = async_call_later(
             self.hass, OPTIMISTIC_UNLOCK_SECONDS, _relock
