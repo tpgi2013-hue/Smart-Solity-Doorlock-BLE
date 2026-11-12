@@ -89,10 +89,22 @@ class SolityBleLock(CoordinatorEntity[SolityBleCoordinator], LockEntity):
         """Retract the deadbolt over BLE (optimistic until auto-relock)."""
         try:
             status = await self._client.async_open()
+        except SolityBleRejected as err:
+            if await self._real_state_is(False):
+                # Already open (keypad, card or from inside) — nothing to do.
+                _LOGGER.info("Solity BLE open skipped: deadbolt already open")
+                self.async_write_ha_state()
+                return
+            # The lock said "already" but reads locked: a stale answer.
+            # Try once more on a fresh connection.
+            _LOGGER.warning("Solity BLE open rejected while locked (%s), retrying", err)
+            try:
+                status = await self._client.async_open()
+            except SolityBleError as err2:
+                _LOGGER.warning("Solity BLE open failed: %s", err2)
+                raise HomeAssistantError(f"BLE 열림 실패: {err2}") from err2
         except SolityBleError as err:
             _LOGGER.warning("Solity BLE open failed: %s", err)
-            if isinstance(err, SolityBleRejected) and await self._real_state_is(False):
-                return  # already open (e.g. opened from inside) — nothing to do
             raise HomeAssistantError(f"BLE 열림 실패: {err}") from err
 
         # The captured status predates the open (battery/counts valid), so keep
@@ -137,13 +149,22 @@ class SolityBleLock(CoordinatorEntity[SolityBleCoordinator], LockEntity):
         """Throw the deadbolt over BLE."""
         try:
             status = await self._client.async_close()
-        except SolityBleError as err:
-            _LOGGER.warning("Solity BLE close failed: %s", err)
-            if isinstance(err, SolityBleRejected) and await self._real_state_is(True):
+        except SolityBleRejected as err:
+            if await self._real_state_is(True):
+                # Already locked — the shown state was stale.
+                _LOGGER.info("Solity BLE close skipped: deadbolt already locked")
                 self._clear_relock()
                 self._optimistic_unlocked = False
                 self.async_write_ha_state()
-                return  # already locked — the shown state was stale
+                return
+            _LOGGER.warning("Solity BLE close rejected while open (%s), retrying", err)
+            try:
+                status = await self._client.async_close()
+            except SolityBleError as err2:
+                _LOGGER.warning("Solity BLE close failed: %s", err2)
+                raise HomeAssistantError(f"BLE 잠금 실패: {err2}") from err2
+        except SolityBleError as err:
+            _LOGGER.warning("Solity BLE close failed: %s", err)
             raise HomeAssistantError(f"BLE 잠금 실패: {err}") from err
         self._clear_relock()
         self._optimistic_unlocked = False

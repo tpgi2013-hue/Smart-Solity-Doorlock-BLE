@@ -76,6 +76,8 @@ STATUS_DRAIN_TIMEOUT = 0.4
 # Pause before retrying a failed command on a fresh connection, so the retry
 # carries a new time-key second (precaution; the lock's rule is not documented).
 RETRY_DELAY = 1.1
+# OPEN/CLOSE result byte: the deadbolt is already in the asked position.
+RESULT_ALREADY = 1
 
 
 class SolityBleError(Exception):
@@ -387,8 +389,14 @@ class SolityBleClient:
                 try:
                     return await self._command(cmd, suffix, ack)
                 except SolityBleError as err:
+                    if isinstance(err, SolityBleRejected) and err.result == RESULT_ALREADY:
+                        # "Already in that state" (e.g. opened by keypad or
+                        # from inside) — a new connection gets the same
+                        # answer. Let the caller re-read the real state
+                        # instead of spending a second connection here.
+                        raise
                     # A warm session the lock already dropped, or a command
-                    # that landed while the session was ending, is rejected.
+                    # that landed while the session was ending, fails.
                     # Retry once on a brand-new connection.
                     _LOGGER.warning(
                         "Solity BLE 0x%02X failed on %s session (%s), retrying on a new connection",
