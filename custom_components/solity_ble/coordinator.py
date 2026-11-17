@@ -41,6 +41,7 @@ from .const import (
     FUNCTION_REFRESH_HOURS,
     LIVE_DEDUP_SECONDS,
     MEDIA_NAMES,
+    SLOT_MEDIA,
     SLOT_NAME_ALIASES,
     UNLOCKED_RECHECK_MAX,
     UNLOCKED_RECHECK_SECONDS,
@@ -254,7 +255,9 @@ class SolityBleCoordinator(DataUpdateCoordinator[SolityStatus | None]):
         else:
             method = MEDIA_NAMES.get(ev.media, f"방법 {ev.media}")
 
-        slot = ev.slot or None
+        # Only credential methods carry a meaningful slot (실내/원격/스마트오픈
+        # report a stray 1).
+        slot = ev.slot if ev.media in SLOT_MEDIA and ev.slot else None
         person = None
         if slot is not None and ev.media is not None:
             person = self.slot_names.get((ev.media, slot))

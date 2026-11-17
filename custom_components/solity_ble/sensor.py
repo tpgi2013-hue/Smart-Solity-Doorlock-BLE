@@ -25,7 +25,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SolityBleConfigEntry
-from .ble import SolityStatus
+from .ble import SolityFunction, SolityStatus
 from .const import CONF_MAC, CONF_NAME, DOMAIN, MANUFACTURER, MODEL
 from .const import EVENT_TYPE_OPEN
 from .coordinator import SolityAccess, SolityBleCoordinator
@@ -114,22 +114,52 @@ async def async_setup_entry(
     entities.append(SolityBleRssiSensor(hass, entry))
     entities.append(SolityBleLastAccessSensor(entry, timestamp=False))
     entities.append(SolityBleLastAccessSensor(entry, timestamp=True))
-    for key, icon in SETTING_SENSORS:
-        entities.append(SolityBleSettingRawSensor(entry, key, icon))
+    for desc in SETTING_SENSORS:
+        entities.append(SolityBleSettingSensor(entry, desc))
     async_add_entities(entities)
 
 
-# Settings frame values, read-only for now (shown as the lock reports them).
-SETTING_SENSORS: tuple[tuple[str, str], ...] = (
-    ("mute", "mdi:volume-off"),  # 1 = mute (etiquette mode)
-    ("volume", "mdi:volume-high"),  # 1-7
-    ("always_open", "mdi:lock-open-variant"),  # 1 = manual lock
-    ("lock_time", "mdi:timer-lock"),  # auto-lock delay, seconds
-    ("double_lock", "mdi:lock-plus"),  # 0 off / 1 inside / 2 outside
-    ("two_factor_auth", "mdi:shield-lock"),
-    ("voice_type", "mdi:account-voice"),
-    ("go_out", "mdi:walk"),
-    ("imaginary_number", "mdi:numeric"),
+# Settings this lock model has (app 기능설정: 음량, 외부/내부 강제잠금, 수동잠금),
+# read-only for now. Keys keep the 1.4.0 unique IDs.
+@dataclass(frozen=True, kw_only=True)
+class SolityBleSettingDescription(SensorEntityDescription):
+    value_fn: Callable[[SolityFunction], int | str | None]
+
+
+def _on_off(value: int | None) -> str | None:
+    return None if value is None else ("on" if value == 1 else "off")
+
+
+SETTING_SENSORS: tuple[SolityBleSettingDescription, ...] = (
+    SolityBleSettingDescription(
+        key="volume",
+        icon="mdi:volume-high",
+        # The lock reports 1-7; the app shows that minus one (0-6).
+        value_fn=lambda f: None if f.volume is None else max(f.volume - 1, 0),
+    ),
+    SolityBleSettingDescription(
+        key="mute",
+        icon="mdi:volume-off",
+        device_class=SensorDeviceClass.ENUM,
+        options=["off", "on"],
+        value_fn=lambda f: _on_off(f.mute),
+    ),
+    SolityBleSettingDescription(
+        key="always_open",
+        icon="mdi:lock-open-variant",
+        device_class=SensorDeviceClass.ENUM,
+        options=["off", "on"],
+        value_fn=lambda f: _on_off(f.always_open),
+    ),
+    SolityBleSettingDescription(
+        key="double_lock",
+        icon="mdi:lock-plus",
+        device_class=SensorDeviceClass.ENUM,
+        options=["off", "inside", "outside"],
+        value_fn=lambda f: {0: "off", 1: "inside", 2: "outside"}.get(f.double_lock)
+        if f.double_lock is not None
+        else None,
+    ),
 )
 
 
@@ -189,20 +219,22 @@ class SolityBleLastAccessSensor(RestoreSensor):
         self.async_write_ha_state()
 
 
-class SolityBleSettingRawSensor(SolityBleSettingEntity, SensorEntity):
-    """A settings-frame value, shown raw as the lock reports it."""
+class SolityBleSettingSensor(SolityBleSettingEntity, SensorEntity):
+    """A lock setting read from the settings frame."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    entity_description: SolityBleSettingDescription
 
-    def __init__(self, entry: SolityBleConfigEntry, key: str, icon: str) -> None:
-        super().__init__(entry, key)
-        self._key = key
-        self._attr_icon = icon
+    def __init__(
+        self, entry: SolityBleConfigEntry, description: SolityBleSettingDescription
+    ) -> None:
+        super().__init__(entry, description.key)
+        self.entity_description = description
 
     @property
-    def native_value(self) -> int | None:
+    def native_value(self) -> int | str | None:
         f = self.function
-        return getattr(f, self._key) if f is not None else None
+        return self.entity_description.value_fn(f) if f is not None else None
 
 
 def _device_info(entry: SolityBleConfigEntry) -> DeviceInfo:

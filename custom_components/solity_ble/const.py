@@ -60,6 +60,9 @@ MEDIA_NAMES: dict[int, str] = {
     32: "실내",
 }
 
+# Methods whose log entries name a credential slot.
+SLOT_MEDIA = frozenset({1, 2, 3, 4, 5, 6, 8, 10, 12, 13})
+
 # Words accepted in CONF_SLOT_NAMES -> media codes they cover.
 SLOT_NAME_ALIASES: dict[str, tuple[int, ...]] = {
     "비밀번호": (1,),
