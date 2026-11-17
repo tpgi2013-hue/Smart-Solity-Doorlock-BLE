@@ -13,13 +13,17 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig
 
 from .ble import SolityBleError, parse_app_key
 from .const import (
     CONF_APP_KEY,
     CONF_MAC,
     CONF_NAME,
+    CONF_READ_LOG,
+    CONF_SLOT_NAMES,
     CONF_STATUS_MINUTES,
+    DEFAULT_READ_LOG,
     DEFAULT_STATUS_MINUTES,
     DOMAIN,
     MAX_STATUS_MINUTES,
@@ -81,7 +85,7 @@ class SolityBleConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class SolityBleOptionsFlow(OptionsFlow):
-    """Options: how often to read lock status over BLE."""
+    """Options: status poll interval, access-log reading, slot names."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -89,17 +93,26 @@ class SolityBleOptionsFlow(OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        current = self.config_entry.options.get(
-            CONF_STATUS_MINUTES, DEFAULT_STATUS_MINUTES
-        )
+        opts = self.config_entry.options
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_STATUS_MINUTES, default=current): vol.All(
+                    vol.Required(
+                        CONF_STATUS_MINUTES,
+                        default=opts.get(CONF_STATUS_MINUTES, DEFAULT_STATUS_MINUTES),
+                    ): vol.All(
                         vol.Coerce(int),
                         vol.Range(min=MIN_STATUS_MINUTES, max=MAX_STATUS_MINUTES),
                     ),
+                    vol.Required(
+                        CONF_READ_LOG,
+                        default=opts.get(CONF_READ_LOG, DEFAULT_READ_LOG),
+                    ): bool,
+                    vol.Optional(
+                        CONF_SLOT_NAMES,
+                        description={"suggested_value": opts.get(CONF_SLOT_NAMES, "")},
+                    ): TextSelector(TextSelectorConfig(multiline=True)),
                 }
             ),
         )

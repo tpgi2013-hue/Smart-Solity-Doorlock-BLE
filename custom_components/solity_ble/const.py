@@ -29,3 +29,56 @@ PREWARM_MAX_SECONDS = 20
 # open), re-read this often until it reports locked, at most this many times.
 UNLOCKED_RECHECK_SECONDS = 15
 UNLOCKED_RECHECK_MAX = 8
+
+# ---- access log ----------------------------------------------------------
+
+# Read (and take over) the lock's queued access log in every BLE session.
+CONF_READ_LOG = "read_log"
+DEFAULT_READ_LOG = True
+# Slot names, one per line: "지문 3 = 재현", "카드 1 = 엄마", "비밀번호 2 = 손님".
+CONF_SLOT_NAMES = "slot_names"
+
+# A queued log entry for the same open/close as a live event pushed this long
+# ago (or less) is the same event: don't report it twice.
+LIVE_DEDUP_SECONDS = 600
+
+# How an open/close was made (DoorLock.Event.Data in the Solity app).
+MEDIA_NAMES: dict[int, str] = {
+    1: "비밀번호",
+    2: "마스터 비밀번호",
+    3: "게스트 비밀번호",
+    4: "마스터 카드",
+    5: "카드",
+    6: "리모컨",
+    7: "원격",
+    8: "지문",
+    9: "스마트터치",
+    10: "방문자 비밀번호",
+    11: "스마트오픈",
+    12: "이중인증(카드)",
+    13: "이중인증(지문)",
+    32: "실내",
+}
+
+# Words accepted in CONF_SLOT_NAMES -> media codes they cover.
+SLOT_NAME_ALIASES: dict[str, tuple[int, ...]] = {
+    "비밀번호": (1,),
+    "비번": (1,),
+    "마스터비밀번호": (2,),
+    "마스터비번": (2,),
+    "카드": (5, 12),
+    "마스터카드": (4,),
+    "리모컨": (6,),
+    "지문": (8, 13),
+    "방문자비밀번호": (10,),
+    "방문자비번": (10,),
+}
+
+EVENT_TYPE_OPEN = "open"
+EVENT_TYPE_CLOSE = "close"
+EVENT_TYPE_OTHER = "other"
+
+# ---- settings (0x5A) -----------------------------------------------------
+
+# Re-read the settings frame at most this often during regular polls.
+FUNCTION_REFRESH_HOURS = 6

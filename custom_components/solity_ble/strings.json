@@ -24,7 +24,9 @@
       "init": {
         "title": "Solity Doorlock (BLE)",
         "data": {
-          "status_minutes": "Status poll interval (minutes, 0 = off)"
+          "status_minutes": "Status poll interval (minutes, 0 = off)",
+          "read_log": "Read the access log (takes entries over from the Solity app)",
+          "slot_names": "Slot names, one per line (e.g. 지문 3 = Jaehyun, 카드 1 = Mom)"
         }
       }
     }
@@ -51,11 +53,58 @@
       },
       "rssi": {
         "name": "Signal strength"
+      },
+      "last_access": {
+        "name": "Last access"
+      },
+      "last_access_time": {
+        "name": "Last access time"
+      },
+      "go_out": {
+        "name": "Go-out setting"
+      },
+      "imaginary_number": {
+        "name": "Fake digits setting"
+      },
+      "mute": {
+        "name": "Mute setting"
+      },
+      "volume": {
+        "name": "Volume setting"
+      },
+      "always_open": {
+        "name": "Manual lock setting"
+      },
+      "lock_time": {
+        "name": "Auto-lock delay setting"
+      },
+      "double_lock": {
+        "name": "Double lock setting"
+      },
+      "two_factor_auth": {
+        "name": "Two-factor auth setting"
+      },
+      "voice_type": {
+        "name": "Voice guide setting"
       }
     },
     "switch": {
       "standby": {
         "name": "Connection standby"
+      }
+    },
+    "event": {
+      "access": {
+        "name": "Access",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "open": "Opened",
+              "close": "Closed",
+              "other": "Other"
+            }
+          }
+        }
       }
     }
   }
