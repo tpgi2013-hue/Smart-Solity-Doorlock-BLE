@@ -119,8 +119,8 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-# Settings this lock model has, read-only (app 기능설정: 외부/내부 강제잠금,
-# 수동잠금). Volume is a number entity, mute a switch. Keys keep the 1.4.0 unique IDs.
+# Forced lock (app 기능설정: 외부/내부 강제잠금), read-only: explains why an
+# authenticated open does nothing. Volume is a number entity, mute a switch. Keys keep the 1.4.0 unique IDs.
 @dataclass(frozen=True, kw_only=True)
 class SolityBleSettingDescription(SensorEntityDescription):
     value_fn: Callable[[SolityFunction], int | str | None]
@@ -131,13 +131,6 @@ def _on_off(value: int | None) -> str | None:
 
 
 SETTING_SENSORS: tuple[SolityBleSettingDescription, ...] = (
-    SolityBleSettingDescription(
-        key="always_open",
-        icon="mdi:lock-open-variant",
-        device_class=SensorDeviceClass.ENUM,
-        options=["off", "on"],
-        value_fn=lambda f: _on_off(f.always_open),
-    ),
     SolityBleSettingDescription(
         key="double_lock",
         icon="mdi:lock-plus",
