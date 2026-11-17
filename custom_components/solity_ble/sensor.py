@@ -119,8 +119,8 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-# Settings this lock model has (app 기능설정: 음량, 외부/내부 강제잠금, 수동잠금),
-# read-only for now. Keys keep the 1.4.0 unique IDs.
+# Settings this lock model has (app 기능설정: 외부/내부 강제잠금, 수동잠금, 무음),
+# read-only for now. Volume is a number entity (number.py). Keys keep the 1.4.0 unique IDs.
 @dataclass(frozen=True, kw_only=True)
 class SolityBleSettingDescription(SensorEntityDescription):
     value_fn: Callable[[SolityFunction], int | str | None]
@@ -131,12 +131,6 @@ def _on_off(value: int | None) -> str | None:
 
 
 SETTING_SENSORS: tuple[SolityBleSettingDescription, ...] = (
-    SolityBleSettingDescription(
-        key="volume",
-        icon="mdi:volume-high",
-        # The lock reports 1-7; the app shows that minus one (0-6).
-        value_fn=lambda f: None if f.volume is None else max(f.volume - 1, 0),
-    ),
     SolityBleSettingDescription(
         key="mute",
         icon="mdi:volume-off",

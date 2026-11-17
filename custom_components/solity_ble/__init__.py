@@ -31,6 +31,7 @@ from .coordinator import SolityBleCoordinator, parse_slot_names
 PLATFORMS: list[Platform] = [
     Platform.EVENT,
     Platform.LOCK,
+    Platform.NUMBER,
     Platform.SENSOR,
     Platform.SWITCH,
 ]

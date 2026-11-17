@@ -67,9 +67,6 @@
           "on": "On"
         }
       },
-      "volume": {
-        "name": "Volume"
-      },
       "always_open": {
         "name": "Manual lock",
         "state": {
@@ -103,6 +100,11 @@
             }
           }
         }
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "Volume"
       }
     }
   }

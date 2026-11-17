@@ -20,7 +20,8 @@ the Solity app does before uploading them. While a session is up the lock
 also pushes ``0x53 / 0x54 / 0x55`` event frames the moment the door is used.
 
 Settings: ``0x5A`` -> ``0xDA`` reads volume / mute / manual lock / auto-lock
-time / double lock / two-factor auth / voice (read-only here).
+time / double lock / two-factor auth / voice. Volume can be written
+(``0x27`` mute + level -> ``0xA7`` result).
 
 Warm sessions: ``async_prewarm`` connects and authenticates ahead of time and
 holds the session until ``async_release`` (or a safety cap). A command arriving
@@ -67,6 +68,7 @@ CMD_OPEN = 0x21
 CMD_CLOSE = 0x22
 CMD_STATUS_REQ = 0x51  # ask the lock for its status
 CMD_FUNCTION_REQ = 0x5A  # DOOR_LOCK_FUNCTION: read settings
+CMD_VOLUME = 0x27  # set volume: mute(0/1) + level(1-7)
 CMD_LOG_REQ = 0x5D  # INQUIRE_MODULE_LOG: hand out queued access-log entries
 ACK_EXCHANGE_KEY = 0x90
 ACK_AUTH_APP = 0x91
@@ -74,6 +76,7 @@ ACK_OPEN = 0xA1
 ACK_CLOSE = 0xA2
 ACK_STATUS = 0xD1  # status reply (to 0x51), carries the DoorLockStatus payload
 ACK_FUNCTION = 0xDA
+ACK_VOLUME = 0xA7
 ACK_LOG = 0xDD
 ACK_ERROR = 0xFF
 
@@ -366,6 +369,15 @@ class SolityBleClient:
             CMD_STATUS_REQ, b"", ACK_STATUS, read_function=read_function
         )
 
+    async def async_set_volume(self, mute: bool, level: int) -> SolityFunction | None:
+        """Write mute + volume level (1-7), then re-read the settings frame."""
+        if not 1 <= level <= 7:
+            raise SolityBleError(f"volume level out of range: {level}")
+        await self._run(
+            CMD_VOLUME, bytes([1 if mute else 0, level]), ACK_VOLUME, read_function=True
+        )
+        return self._function
+
     @property
     def function(self) -> SolityFunction | None:
         """Last settings frame read from the lock."""
@@ -645,7 +657,7 @@ class SolityBleClient:
             done = await self._await(ack, iv, CMD_RECV_TIMEOUT)
             # OPEN/CLOSE reply with a result byte; the 0xD1 status reply is
             # the payload itself (captured by _note), not a result.
-            if cmd in (CMD_OPEN, CMD_CLOSE) and done[3] != 0:
+            if cmd in (CMD_OPEN, CMD_CLOSE, CMD_VOLUME) and done[3] != 0:
                 raise SolityBleRejected(cmd, done[3])
 
             # Briefly drain to capture a pushed 0xD1 status.
