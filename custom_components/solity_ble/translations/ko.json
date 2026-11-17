@@ -60,32 +60,30 @@
       "last_access_time": {
         "name": "마지막 출입 시각"
       },
-      "go_out": {
-        "name": "외출 설정값"
-      },
-      "imaginary_number": {
-        "name": "허수 설정값"
-      },
       "mute": {
-        "name": "무음 설정값"
+        "name": "무음 (에티켓 모드)",
+        "state": {
+          "off": "꺼짐",
+          "on": "켜짐"
+        }
       },
       "volume": {
-        "name": "음량 설정값"
+        "name": "음량"
       },
       "always_open": {
-        "name": "수동 잠금 설정값"
-      },
-      "lock_time": {
-        "name": "자동 잠금 시간 설정값"
+        "name": "수동 잠금",
+        "state": {
+          "off": "꺼짐",
+          "on": "켜짐"
+        }
       },
       "double_lock": {
-        "name": "이중 잠금 설정값"
-      },
-      "two_factor_auth": {
-        "name": "이중 인증 설정값"
-      },
-      "voice_type": {
-        "name": "음성 안내 설정값"
+        "name": "강제 잠금",
+        "state": {
+          "off": "꺼짐",
+          "inside": "내부 강제잠금",
+          "outside": "외부 강제잠금"
+        }
       }
     },
     "switch": {

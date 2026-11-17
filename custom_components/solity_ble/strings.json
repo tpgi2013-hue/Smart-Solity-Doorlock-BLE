@@ -60,32 +60,30 @@
       "last_access_time": {
         "name": "Last access time"
       },
-      "go_out": {
-        "name": "Go-out setting"
-      },
-      "imaginary_number": {
-        "name": "Fake digits setting"
-      },
       "mute": {
-        "name": "Mute setting"
+        "name": "Mute (etiquette mode)",
+        "state": {
+          "off": "Off",
+          "on": "On"
+        }
       },
       "volume": {
-        "name": "Volume setting"
+        "name": "Volume"
       },
       "always_open": {
-        "name": "Manual lock setting"
-      },
-      "lock_time": {
-        "name": "Auto-lock delay setting"
+        "name": "Manual lock",
+        "state": {
+          "off": "Off",
+          "on": "On"
+        }
       },
       "double_lock": {
-        "name": "Double lock setting"
-      },
-      "two_factor_auth": {
-        "name": "Two-factor auth setting"
-      },
-      "voice_type": {
-        "name": "Voice guide setting"
+        "name": "Forced lock",
+        "state": {
+          "off": "Off",
+          "inside": "Inside",
+          "outside": "Outside"
+        }
       }
     },
     "switch": {
