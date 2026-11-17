@@ -60,13 +60,6 @@
       "last_access_time": {
         "name": "Last access time"
       },
-      "mute": {
-        "name": "Mute (etiquette mode)",
-        "state": {
-          "off": "Off",
-          "on": "On"
-        }
-      },
       "always_open": {
         "name": "Manual lock",
         "state": {
@@ -86,6 +79,9 @@
     "switch": {
       "standby": {
         "name": "Connection standby"
+      },
+      "mute": {
+        "name": "Mute (etiquette mode)"
       }
     },
     "event": {
