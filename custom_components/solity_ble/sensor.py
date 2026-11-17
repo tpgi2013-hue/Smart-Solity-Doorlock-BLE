@@ -1,11 +1,13 @@
-"""Sensor platform for Solity BLE — everything the status frame reports."""
+"""Sensor platform for Solity BLE — status frame, last access, settings extras."""
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from homeassistant.components.bluetooth import async_last_service_info
+
 from homeassistant.components.sensor import (
+    RestoreSensor,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
@@ -16,15 +18,18 @@ from homeassistant.const import (
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     EntityCategory,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SolityBleConfigEntry
 from .ble import SolityStatus
 from .const import CONF_MAC, CONF_NAME, DOMAIN, MANUFACTURER, MODEL
-from .coordinator import SolityBleCoordinator
+from .const import EVENT_TYPE_OPEN
+from .coordinator import SolityAccess, SolityBleCoordinator
+from .entity import SolityBleSettingEntity
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -107,7 +112,97 @@ async def async_setup_entry(
         SolityBleSensor(coordinator, entry, desc) for desc in SENSORS
     ]
     entities.append(SolityBleRssiSensor(hass, entry))
+    entities.append(SolityBleLastAccessSensor(entry, timestamp=False))
+    entities.append(SolityBleLastAccessSensor(entry, timestamp=True))
+    for key, icon in SETTING_SENSORS:
+        entities.append(SolityBleSettingRawSensor(entry, key, icon))
     async_add_entities(entities)
+
+
+# Settings frame values, read-only for now (shown as the lock reports them).
+SETTING_SENSORS: tuple[tuple[str, str], ...] = (
+    ("mute", "mdi:volume-off"),  # 1 = mute (etiquette mode)
+    ("volume", "mdi:volume-high"),  # 1-7
+    ("always_open", "mdi:lock-open-variant"),  # 1 = manual lock
+    ("lock_time", "mdi:timer-lock"),  # auto-lock delay, seconds
+    ("double_lock", "mdi:lock-plus"),  # 0 off / 1 inside / 2 outside
+    ("two_factor_auth", "mdi:shield-lock"),
+    ("voice_type", "mdi:account-voice"),
+    ("go_out", "mdi:walk"),
+    ("imaginary_number", "mdi:numeric"),
+)
+
+
+class SolityBleLastAccessSensor(RestoreSensor):
+    """Last time the door was opened from outside/inside, and how.
+
+    ``timestamp=False``: text like '지문 3번 (재현)'. ``timestamp=True``: when
+    (lock clock). Both carry method / slot / person attributes. Survives HA
+    restarts (the lock hands each log entry out only once).
+    """
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(self, entry: SolityBleConfigEntry, timestamp: bool) -> None:
+        self._coordinator = entry.runtime_data.coordinator
+        self._timestamp = timestamp
+        key = "last_access_time" if timestamp else "last_access"
+        self._attr_translation_key = key
+        self._attr_unique_id = f"{entry.data[CONF_MAC]}_{key}"
+        self._attr_device_info = _device_info(entry)
+        if timestamp:
+            self._attr_device_class = SensorDeviceClass.TIMESTAMP
+            self._attr_icon = "mdi:door-open"
+        else:
+            self._attr_icon = "mdi:account-key"
+        self._attr_extra_state_attributes = {}
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        last_data = await self.async_get_last_sensor_data()
+        if last is not None:
+            self._attr_extra_state_attributes = {
+                k: v
+                for k, v in last.attributes.items()
+                if k in ("method", "method_code", "slot", "person", "at", "battery", "source")
+            }
+        if last_data is not None and last_data.native_value is not None:
+            value = last_data.native_value
+            if self._timestamp and isinstance(value, str):
+                value = dt_util.parse_datetime(value)
+            self._attr_native_value = value
+        self.async_on_remove(self._coordinator.add_access_listener(self._on_access))
+
+    @callback
+    def _on_access(self, access: SolityAccess) -> None:
+        if access.event_type != EVENT_TYPE_OPEN:
+            return
+        prev = self._attr_extra_state_attributes.get("at")
+        if prev:
+            prev_at = dt_util.parse_datetime(prev)
+            if prev_at is not None and access.at < prev_at:
+                return  # an older entry arriving late
+        self._attr_native_value = access.at if self._timestamp else access.summary
+        self._attr_extra_state_attributes = access.as_attributes()
+        self.async_write_ha_state()
+
+
+class SolityBleSettingRawSensor(SolityBleSettingEntity, SensorEntity):
+    """A settings-frame value, shown raw as the lock reports it."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, entry: SolityBleConfigEntry, key: str, icon: str) -> None:
+        super().__init__(entry, key)
+        self._key = key
+        self._attr_icon = icon
+
+    @property
+    def native_value(self) -> int | None:
+        f = self.function
+        return getattr(f, self._key) if f is not None else None
 
 
 def _device_info(entry: SolityBleConfigEntry) -> DeviceInfo:

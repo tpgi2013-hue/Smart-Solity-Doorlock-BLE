@@ -24,7 +24,9 @@
       "init": {
         "title": "Solity 도어락 (BLE)",
         "data": {
-          "status_minutes": "상태 조회 주기 (분, 0 = 끔)"
+          "status_minutes": "상태 조회 주기 (분, 0 = 끔)",
+          "read_log": "출입기록 읽기 (읽은 기록은 솔리티 앱에 안 남음)",
+          "slot_names": "번호별 이름, 한 줄에 하나 (예: 지문 3 = 재현, 카드 1 = 엄마, 비밀번호 2 = 손님)"
         }
       }
     }
@@ -51,11 +53,58 @@
       },
       "rssi": {
         "name": "신호 세기"
+      },
+      "last_access": {
+        "name": "마지막 출입"
+      },
+      "last_access_time": {
+        "name": "마지막 출입 시각"
+      },
+      "go_out": {
+        "name": "외출 설정값"
+      },
+      "imaginary_number": {
+        "name": "허수 설정값"
+      },
+      "mute": {
+        "name": "무음 설정값"
+      },
+      "volume": {
+        "name": "음량 설정값"
+      },
+      "always_open": {
+        "name": "수동 잠금 설정값"
+      },
+      "lock_time": {
+        "name": "자동 잠금 시간 설정값"
+      },
+      "double_lock": {
+        "name": "이중 잠금 설정값"
+      },
+      "two_factor_auth": {
+        "name": "이중 인증 설정값"
+      },
+      "voice_type": {
+        "name": "음성 안내 설정값"
       }
     },
     "switch": {
       "standby": {
         "name": "연결 대기"
+      }
+    },
+    "event": {
+      "access": {
+        "name": "출입",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "open": "열림",
+              "close": "닫힘",
+              "other": "기타"
+            }
+          }
+        }
       }
     }
   }

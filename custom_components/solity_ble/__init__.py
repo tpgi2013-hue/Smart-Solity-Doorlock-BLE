@@ -4,7 +4,8 @@ A standalone, cloud-free companion to the cloud ``solity`` integration: it
 talks to the lock's Bluetooth pack directly through Home Assistant's
 Bluetooth proxy mesh, so it keeps working (and stays fast) even when the
 WiFi+ module / Solity cloud is down. It also reads status (battery, deadbolt,
-registered-credential counts, system mode) straight from the lock over BLE.
+registered-credential counts, system mode), the access log (who opened, how,
+which slot) and the lock's settings straight from the lock over BLE.
 """
 from __future__ import annotations
 
@@ -19,12 +20,20 @@ from .const import (
     CONF_APP_KEY,
     CONF_MAC,
     CONF_NAME,
+    CONF_READ_LOG,
+    CONF_SLOT_NAMES,
     CONF_STATUS_MINUTES,
+    DEFAULT_READ_LOG,
     DEFAULT_STATUS_MINUTES,
 )
-from .coordinator import SolityBleCoordinator
+from .coordinator import SolityBleCoordinator, parse_slot_names
 
-PLATFORMS: list[Platform] = [Platform.LOCK, Platform.SENSOR, Platform.SWITCH]
+PLATFORMS: list[Platform] = [
+    Platform.EVENT,
+    Platform.LOCK,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 
 
 @dataclass
@@ -44,10 +53,15 @@ async def async_setup_entry(
     """Set up Solity BLE from a config entry."""
     app_key = parse_app_key(entry.data[CONF_APP_KEY])
     client = SolityBleClient(hass, entry.data[CONF_MAC], app_key)
+    client.read_log = entry.options.get(CONF_READ_LOG, DEFAULT_READ_LOG)
 
     poll_minutes = entry.options.get(CONF_STATUS_MINUTES, DEFAULT_STATUS_MINUTES)
     coordinator = SolityBleCoordinator(
-        hass, client, entry.data.get(CONF_NAME) or "Solity Doorlock (BLE)", poll_minutes
+        hass,
+        client,
+        entry.data.get(CONF_NAME) or "Solity Doorlock (BLE)",
+        poll_minutes,
+        parse_slot_names(entry.options.get(CONF_SLOT_NAMES)),
     )
     entry.runtime_data = SolityBleData(client=client, coordinator=coordinator)
 
