@@ -189,6 +189,12 @@ class SolityBleCoordinator(DataUpdateCoordinator[SolityStatus | None]):
     def function(self) -> SolityFunction | None:
         return self.client.function
 
+    async def async_set_volume_step(self, step: int) -> None:
+        """Set the volume as the app shows it (0-6); keeps the mute setting."""
+        f = self.function
+        mute = f is not None and f.mute == 1
+        await self.client.async_set_volume(mute, step + 1)
+
     @callback
     def _on_function(self, _function: SolityFunction) -> None:
         self._function_read_at = time.monotonic()

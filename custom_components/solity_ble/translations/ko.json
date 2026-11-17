@@ -67,9 +67,6 @@
           "on": "켜짐"
         }
       },
-      "volume": {
-        "name": "음량"
-      },
       "always_open": {
         "name": "수동 잠금",
         "state": {
@@ -103,6 +100,11 @@
             }
           }
         }
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "음량"
       }
     }
   }
