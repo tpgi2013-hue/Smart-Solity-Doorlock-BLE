@@ -35,7 +35,7 @@ UNLOCKED_RECHECK_MAX = 8
 # Read (and take over) the lock's queued access log in every BLE session.
 CONF_READ_LOG = "read_log"
 DEFAULT_READ_LOG = True
-# Slot names, one per line: "지문 3 = 재현", "카드 1 = 엄마", "비밀번호 2 = 손님".
+# Slot names, one per line: "지문 3 = 재현", "카드 1 = 엄마".
 CONF_SLOT_NAMES = "slot_names"
 
 # A queued log entry for the same open/close as a live event pushed this long
@@ -60,21 +60,16 @@ MEDIA_NAMES: dict[int, str] = {
     32: "실내",
 }
 
-# Methods whose log entries name a credential slot.
-SLOT_MEDIA = frozenset({1, 2, 3, 4, 5, 6, 8, 10, 12, 13})
+# Methods whose log entries name a credential slot. Passwords (1/2/3/10) are
+# shown without a number on purpose.
+SLOT_MEDIA = frozenset({4, 5, 6, 8, 12, 13})
 
 # Words accepted in CONF_SLOT_NAMES -> media codes they cover.
 SLOT_NAME_ALIASES: dict[str, tuple[int, ...]] = {
-    "비밀번호": (1,),
-    "비번": (1,),
-    "마스터비밀번호": (2,),
-    "마스터비번": (2,),
     "카드": (5, 12),
     "마스터카드": (4,),
     "리모컨": (6,),
     "지문": (8, 13),
-    "방문자비밀번호": (10,),
-    "방문자비번": (10,),
 }
 
 EVENT_TYPE_OPEN = "open"
