@@ -1,4 +1,4 @@
-"""Switch platform for Solity BLE: connection standby.
+"""Switch platform for Solity BLE: connection standby + mute (etiquette mode).
 
 Holds a connected + authenticated BLE session ("standby") so the next command
 skips connection setup.
@@ -19,9 +19,12 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from homeassistant.const import EntityCategory
+
 from . import SolityBleConfigEntry
 from .ble import SolityBleError
 from .const import CONF_MAC, DOMAIN, PREWARM_MAX_SECONDS
+from .entity import SolityBleSettingEntity
 
 
 async def async_setup_entry(
@@ -29,8 +32,37 @@ async def async_setup_entry(
     entry: SolityBleConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the Solity BLE connection standby switch."""
-    async_add_entities([SolityBleStandbySwitch(entry)])
+    """Set up the Solity BLE switches."""
+    async_add_entities([SolityBleStandbySwitch(entry), SolityBleMuteSwitch(entry)])
+
+
+class SolityBleMuteSwitch(SolityBleSettingEntity, SwitchEntity):
+    """Mute (etiquette mode); writing it keeps the volume level."""
+
+    _attr_icon = "mdi:volume-off"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, entry: SolityBleConfigEntry) -> None:
+        super().__init__(entry, "mute")
+
+    @property
+    def is_on(self) -> bool | None:
+        f = self.function
+        if f is None or f.mute is None:
+            return None
+        return f.mute == 1
+
+    async def _write(self, on: bool) -> None:
+        try:
+            await self.coordinator.async_set_mute(on)
+        except SolityBleError as err:
+            raise HomeAssistantError(f"도어락 무음 변경 실패: {err}") from err
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._write(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._write(False)
 
 
 class SolityBleStandbySwitch(SwitchEntity):

@@ -195,6 +195,12 @@ class SolityBleCoordinator(DataUpdateCoordinator[SolityStatus | None]):
         mute = f is not None and f.mute == 1
         await self.client.async_set_volume(mute, step + 1)
 
+    async def async_set_mute(self, mute: bool) -> None:
+        """Turn mute (etiquette mode) on/off; keeps the volume level."""
+        f = self.function
+        level = f.volume if f is not None and f.volume else 1
+        await self.client.async_set_volume(mute, level)
+
     @callback
     def _on_function(self, _function: SolityFunction) -> None:
         self._function_read_at = time.monotonic()

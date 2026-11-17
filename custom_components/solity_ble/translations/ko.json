@@ -60,20 +60,6 @@
       "last_access_time": {
         "name": "마지막 출입 시각"
       },
-      "mute": {
-        "name": "무음 (에티켓 모드)",
-        "state": {
-          "off": "꺼짐",
-          "on": "켜짐"
-        }
-      },
-      "always_open": {
-        "name": "수동 잠금",
-        "state": {
-          "off": "꺼짐",
-          "on": "켜짐"
-        }
-      },
       "double_lock": {
         "name": "강제 잠금",
         "state": {
@@ -86,6 +72,9 @@
     "switch": {
       "standby": {
         "name": "연결 대기"
+      },
+      "mute": {
+        "name": "무음 (에티켓 모드)"
       }
     },
     "event": {
