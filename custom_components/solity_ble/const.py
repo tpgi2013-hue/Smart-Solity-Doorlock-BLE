@@ -60,6 +60,9 @@ MEDIA_NAMES: dict[int, str] = {
     32: "실내",
 }
 
+# Plain password: shown without its slot number unless that slot has a name.
+PASSWORD_MEDIA = 1
+
 # Methods whose log entries name a credential slot.
 SLOT_MEDIA = frozenset({1, 2, 3, 4, 5, 6, 8, 10, 12, 13})
 

@@ -146,8 +146,9 @@ SETTING_SENSORS: tuple[SolityBleSettingDescription, ...] = (
 class SolityBleLastAccessSensor(RestoreSensor):
     """Last time the door was opened from outside/inside, and how.
 
-    ``timestamp=False``: text like '지문 3번 (재현)'. ``timestamp=True``: when
-    (lock clock). Both carry method / slot / person attributes. Survives HA
+    ``timestamp=False``: text like '지문 3번 (재현) · 18:05:41' (lock clock),
+    one state per open so its history reads as the access list.
+    ``timestamp=True``: when (lock clock), newest only. Both carry method / slot / person attributes. Survives HA
     restarts (the lock hands each log entry out only once).
     """
 
@@ -189,14 +190,30 @@ class SolityBleLastAccessSensor(RestoreSensor):
     def _on_access(self, access: SolityAccess) -> None:
         if access.event_type != EVENT_TYPE_OPEN:
             return
-        prev = self._attr_extra_state_attributes.get("at")
-        if prev:
-            prev_at = dt_util.parse_datetime(prev)
-            if prev_at is not None and access.at < prev_at:
-                return  # an older entry arriving late
-        self._attr_native_value = access.at if self._timestamp else access.summary
+        if self._timestamp:
+            # The time sensor only moves forward.
+            prev = self._attr_extra_state_attributes.get("at")
+            if prev:
+                prev_at = dt_util.parse_datetime(prev)
+                if prev_at is not None and access.at < prev_at:
+                    return  # an older entry arriving late
+            self._attr_native_value = access.at
+        else:
+            # The text sensor's history is the access list, so every open is
+            # written, late ones included. The label carries the lock's own
+            # time: HA stamps the row when the entry was read, which for a
+            # queued log entry can be minutes later. The time also makes
+            # repeats of the same method distinct states, so none vanish.
+            self._attr_native_value = _access_label(access)
         self._attr_extra_state_attributes = access.as_attributes()
         self.async_write_ha_state()
+
+
+def _access_label(access: SolityAccess) -> str:
+    """e.g. '실내 · 02:14:22', or '실내 · 11/19 23:59:58' for another day."""
+    at = dt_util.as_local(access.at)
+    fmt = "%H:%M:%S" if at.date() == dt_util.now().date() else "%m/%d %H:%M:%S"
+    return f"{access.summary} · {at.strftime(fmt)}"
 
 
 class SolityBleSettingSensor(SolityBleSettingEntity, SensorEntity):

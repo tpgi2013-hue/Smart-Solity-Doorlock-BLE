@@ -41,6 +41,7 @@ from .const import (
     FUNCTION_REFRESH_HOURS,
     LIVE_DEDUP_SECONDS,
     MEDIA_NAMES,
+    PASSWORD_MEDIA,
     SLOT_MEDIA,
     SLOT_NAME_ALIASES,
     UNLOCKED_RECHECK_MAX,
@@ -83,9 +84,13 @@ class SolityAccess:
 
     @property
     def summary(self) -> str:
-        """e.g. '지문 3번 (재현)', '실내', '비밀번호 1번'."""
+        """e.g. '지문 3번 (재현)', '실내', '비밀번호'.
+
+        A password shows no slot number unless it has a name (passwords are
+        not told apart); the number stays in the ``slot`` attribute.
+        """
         text = self.method
-        if self.slot:
+        if self.slot and (self.method_code != PASSWORD_MEDIA or self.person):
             text = f"{text} {self.slot}번"
         if self.person:
             text = f"{text} ({self.person})"
