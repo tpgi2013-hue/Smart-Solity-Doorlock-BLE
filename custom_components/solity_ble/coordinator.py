@@ -41,7 +41,10 @@ from .const import (
     FUNCTION_REFRESH_HOURS,
     LIVE_DEDUP_SECONDS,
     MEDIA_NAMES,
+    OPENER_CONTEXTS_KEPT,
     PASSWORD_MEDIA,
+    REMOTE_LABEL_SECONDS,
+    REMOTE_MEDIA,
     SLOT_MEDIA,
     SLOT_NAME_ALIASES,
     UNLOCKED_RECHECK_MAX,
@@ -81,14 +84,19 @@ class SolityAccess:
     at: datetime  # when it happened (lock clock, or now for live events)
     battery: int | None
     source: str  # "live" | "log"
+    opener: str | None = None  # who sent an HA open, e.g. '얼굴인식 (재현)'
 
     @property
     def summary(self) -> str:
-        """e.g. '지문 3번 (재현)', '실내', '비밀번호'.
+        """e.g. '지문 3번 (재현)', '실내', '비밀번호', '얼굴인식 (재현)'.
+
+        A remote open sent from HA shows who sent it instead of '원격'.
 
         A password shows no slot number unless it has a name (passwords are
         not told apart); the number stays in the ``slot`` attribute.
         """
+        if self.opener:
+            return self.opener
         text = self.method
         if self.slot and (self.method_code != PASSWORD_MEDIA or self.person):
             text = f"{text} {self.slot}번"
@@ -105,6 +113,7 @@ class SolityAccess:
             "at": self.at.isoformat(),
             "battery": self.battery,
             "source": self.source,
+            "opener": self.opener,
         }
 
 
@@ -132,6 +141,8 @@ class SolityBleCoordinator(DataUpdateCoordinator[SolityStatus | None]):
         self._function_read_at: float | None = None
         self._live_recent: list[tuple[int, int | None, int | None, float]] = []
         self._access_listeners: list[Callable[[SolityAccess], None]] = []
+        self._pending_openers: list[tuple[str, float]] = []
+        self._run_names: dict[str, str] = {}
         client.set_event_listener(self._on_events)
         client.set_function_listener(self._on_function)
 
@@ -210,6 +221,30 @@ class SolityBleCoordinator(DataUpdateCoordinator[SolityStatus | None]):
     def _on_function(self, _function: SolityFunction) -> None:
         self._function_read_at = time.monotonic()
         self.async_update_listeners()
+
+    # ---- who opened (HA side) ----------------------------------------------
+
+    @callback
+    def note_run(self, context_id: str, name: str) -> None:
+        """Remember an automation/script run so its opens can be named."""
+        self._run_names[context_id] = name
+        while len(self._run_names) > OPENER_CONTEXTS_KEPT:
+            del self._run_names[next(iter(self._run_names))]
+
+    def run_name(self, context_id: str | None) -> str | None:
+        return self._run_names.get(context_id) if context_id else None
+
+    @callback
+    def note_remote_open(self, opener: str) -> None:
+        """An HA open succeeded; name the lock's next '원격' entry with it."""
+        self._pending_openers.append((opener, time.monotonic()))
+
+    def _take_opener(self) -> str | None:
+        now = time.monotonic()
+        self._pending_openers = [
+            p for p in self._pending_openers if now - p[1] < REMOTE_LABEL_SECONDS
+        ]
+        return self._pending_openers.pop(0)[0] if self._pending_openers else None
 
     # ---- access events -----------------------------------------------------
 
@@ -293,4 +328,7 @@ class SolityBleCoordinator(DataUpdateCoordinator[SolityStatus | None]):
             at=at,
             battery=ev.battery,
             source="live" if ev.live else "log",
+            opener=self._take_opener()
+            if event_type == EVENT_TYPE_OPEN and ev.media == REMOTE_MEDIA
+            else None,
         )

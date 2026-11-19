@@ -60,6 +60,13 @@ MEDIA_NAMES: dict[int, str] = {
     32: "실내",
 }
 
+# Remote (app / HA) open: media code of the lock's '원격' log entries.
+REMOTE_MEDIA = 7
+# An HA open is matched to the lock's next '원격' entry read within this long.
+REMOTE_LABEL_SECONDS = 180
+# Automation / script runs remembered to name who sent an open.
+OPENER_CONTEXTS_KEPT = 30
+
 # Plain password: shown without its slot number unless that slot has a name.
 PASSWORD_MEDIA = 1
 

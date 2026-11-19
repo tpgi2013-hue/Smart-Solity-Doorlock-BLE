@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant, callback
 
 from .ble import SolityBleClient, parse_app_key
 from .const import (
@@ -65,6 +65,17 @@ async def async_setup_entry(
         parse_slot_names(entry.options.get(CONF_SLOT_NAMES)),
     )
     entry.runtime_data = SolityBleData(client=client, coordinator=coordinator)
+
+    # Remember automation/script runs: an open they send carries their
+    # context, which names who opened in the access list.
+    @callback
+    def _on_run(event: Event) -> None:
+        name = event.data.get("name")
+        if name:
+            coordinator.note_run(event.context.id, str(name))
+
+    for event_type in ("automation_triggered", "script_started"):
+        entry.async_on_unload(hass.bus.async_listen(event_type, _on_run))
 
     # Don't block setup on the lock being reachable right now (it may be
     # asleep / out of range); refresh in the background instead.
