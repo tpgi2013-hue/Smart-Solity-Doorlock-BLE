@@ -96,5 +96,17 @@
         "name": "Volume"
       }
     }
+  },
+  "services": {
+    "open": {
+      "name": "Open",
+      "description": "Open the lock over BLE and record who is opening it in the access list.",
+      "fields": {
+        "opener": {
+          "name": "Opener",
+          "description": "Shown in the access list instead of '원격', e.g. 얼굴인식 (재현)."
+        }
+      }
+    }
   }
 }

@@ -1,0 +1,10 @@
+open:
+  target:
+    entity:
+      integration: solity_ble
+      domain: lock
+  fields:
+    opener:
+      example: "얼굴인식 (재현)"
+      selector:
+        text:

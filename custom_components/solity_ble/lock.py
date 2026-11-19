@@ -14,6 +14,10 @@ from typing import Any
 from homeassistant.components.lock import LockEntity, LockEntityFeature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+import voluptuous as vol
+
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later
@@ -41,6 +45,11 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Solity BLE lock."""
     async_add_entities([SolityBleLock(entry)])
+    # solity_ble.open: lock.open plus who is opening, for the access list
+    # (e.g. opener: "얼굴인식 (재현)").
+    entity_platform.async_get_current_platform().async_register_entity_service(
+        "open", {vol.Optional("opener"): cv.string}, "async_open_by"
+    )
 
 
 class SolityBleLock(CoordinatorEntity[SolityBleCoordinator], LockEntity):
@@ -85,8 +94,31 @@ class SolityBleLock(CoordinatorEntity[SolityBleCoordinator], LockEntity):
             self._cancel_relock()
             self._cancel_relock = None
 
+    async def _opener_from_context(self) -> str | None:
+        """Name who sent this open: the automation/script, else the HA user."""
+        ctx = self._context
+        if ctx is None:
+            return None
+        name = self.coordinator.run_name(ctx.id) or self.coordinator.run_name(
+            ctx.parent_id
+        )
+        if name:
+            return f"원격 ({name})"
+        if ctx.user_id:
+            user = await self.hass.auth.async_get_user(ctx.user_id)
+            if user is not None and user.name:
+                return f"원격 ({user.name})"
+        return None
+
+    async def async_open_by(self, opener: str | None = None) -> None:
+        """solity_ble.open service."""
+        await self.async_unlock(opener=opener)
+
     async def async_unlock(self, **kwargs: Any) -> None:
         """Retract the deadbolt over BLE (optimistic until auto-relock)."""
+        # Resolve before any await: the entity context can be replaced by a
+        # later call while this one waits on BLE.
+        opener = kwargs.get("opener") or await self._opener_from_context()
         try:
             status = await self._client.async_open()
         except SolityBleRejected as err:
@@ -107,6 +139,8 @@ class SolityBleLock(CoordinatorEntity[SolityBleCoordinator], LockEntity):
             _LOGGER.warning("Solity BLE open failed: %s", err)
             raise HomeAssistantError(f"BLE 열림 실패: {err}") from err
 
+        if opener:
+            self.coordinator.note_remote_open(opener)
         # The captured status predates the open (battery/counts valid), so keep
         # it for the sensors but show 'unlocked' optimistically for the window.
         self.coordinator.apply_status(status)
