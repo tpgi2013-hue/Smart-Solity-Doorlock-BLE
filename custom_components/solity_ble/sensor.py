@@ -112,8 +112,9 @@ async def async_setup_entry(
         SolityBleSensor(coordinator, entry, desc) for desc in SENSORS
     ]
     entities.append(SolityBleRssiSensor(hass, entry))
-    entities.append(SolityBleLastAccessSensor(entry, timestamp=False))
-    entities.append(SolityBleLastAccessSensor(entry, timestamp=True))
+    entities.append(SolityBleLastAccessSensor(entry, KIND_LAST))
+    entities.append(SolityBleLastAccessSensor(entry, KIND_TIME))
+    entities.append(SolityBleLastAccessSensor(entry, KIND_LOG))
     for desc in SETTING_SENSORS:
         entities.append(SolityBleSettingSensor(entry, desc))
     async_add_entities(entities)
@@ -143,28 +144,37 @@ SETTING_SENSORS: tuple[SolityBleSettingDescription, ...] = (
 )
 
 
-class SolityBleLastAccessSensor(RestoreSensor):
-    """Last time the door was opened from outside/inside, and how.
+KIND_LAST = "last_access"
+KIND_TIME = "last_access_time"
+KIND_LOG = "access_log"
 
-    ``timestamp=False``: text like '지문 3번 (재현) · 18:05:41' (lock clock),
-    one state per open so its history reads as the access list.
-    ``timestamp=True``: when (lock clock), newest only. Both carry method / slot / person attributes. Survives HA
-    restarts (the lock hands each log entry out only once).
+
+class SolityBleLastAccessSensor(RestoreSensor):
+    """Door opens from the access log, in three views.
+
+    ``last_access``: the newest open, e.g. '지문 3번 (재현) · 18:05:41' (lock
+    clock); an older entry read late does not replace it.
+    ``last_access_time``: when the newest open happened (timestamp).
+    ``access_log``: every open as it is read, late ones included, so its
+    history is the full access list.
+    All carry method / slot / person attributes and survive HA restarts (the
+    lock hands each log entry out only once).
     """
 
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, entry: SolityBleConfigEntry, timestamp: bool) -> None:
+    def __init__(self, entry: SolityBleConfigEntry, kind: str) -> None:
         self._coordinator = entry.runtime_data.coordinator
-        self._timestamp = timestamp
-        key = "last_access_time" if timestamp else "last_access"
-        self._attr_translation_key = key
-        self._attr_unique_id = f"{entry.data[CONF_MAC]}_{key}"
+        self._kind = kind
+        self._attr_translation_key = kind
+        self._attr_unique_id = f"{entry.data[CONF_MAC]}_{kind}"
         self._attr_device_info = _device_info(entry)
-        if timestamp:
+        if kind == KIND_TIME:
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
             self._attr_icon = "mdi:door-open"
+        elif kind == KIND_LOG:
+            self._attr_icon = "mdi:format-list-bulleted"
         else:
             self._attr_icon = "mdi:account-key"
         self._attr_extra_state_attributes = {}
@@ -177,11 +187,11 @@ class SolityBleLastAccessSensor(RestoreSensor):
             self._attr_extra_state_attributes = {
                 k: v
                 for k, v in last.attributes.items()
-                if k in ("method", "method_code", "slot", "person", "at", "battery", "source")
+                if k in _ACCESS_ATTRS
             }
         if last_data is not None and last_data.native_value is not None:
             value = last_data.native_value
-            if self._timestamp and isinstance(value, str):
+            if self._kind == KIND_TIME and isinstance(value, str):
                 value = dt_util.parse_datetime(value)
             self._attr_native_value = value
         self.async_on_remove(self._coordinator.add_access_listener(self._on_access))
@@ -190,23 +200,28 @@ class SolityBleLastAccessSensor(RestoreSensor):
     def _on_access(self, access: SolityAccess) -> None:
         if access.event_type != EVENT_TYPE_OPEN:
             return
-        if self._timestamp:
-            # The time sensor only moves forward.
+        if self._kind != KIND_LOG:
+            # 'Last' views only move forward.
             prev = self._attr_extra_state_attributes.get("at")
             if prev:
                 prev_at = dt_util.parse_datetime(prev)
                 if prev_at is not None and access.at < prev_at:
                     return  # an older entry arriving late
+        if self._kind == KIND_TIME:
             self._attr_native_value = access.at
         else:
-            # The text sensor's history is the access list, so every open is
-            # written, late ones included. The label carries the lock's own
-            # time: HA stamps the row when the entry was read, which for a
-            # queued log entry can be minutes later. The time also makes
-            # repeats of the same method distinct states, so none vanish.
+            # The label carries the lock's own time: HA stamps the history
+            # row when the entry was read, which for a queued log entry can be
+            # minutes later. The time also keeps repeats of the same method
+            # distinct states, so none vanish from history.
             self._attr_native_value = _access_label(access)
         self._attr_extra_state_attributes = access.as_attributes()
         self.async_write_ha_state()
+
+
+_ACCESS_ATTRS = (
+    "method", "method_code", "slot", "person", "at", "battery", "source", "opener"
+)
 
 
 def _access_label(access: SolityAccess) -> str:
