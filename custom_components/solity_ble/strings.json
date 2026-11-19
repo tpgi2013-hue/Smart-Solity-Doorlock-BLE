@@ -67,6 +67,9 @@
           "inside": "Inside",
           "outside": "Outside"
         }
+      },
+      "access_log": {
+        "name": "Access log"
       }
     },
     "switch": {

@@ -67,6 +67,9 @@
           "inside": "내부 강제잠금",
           "outside": "외부 강제잠금"
         }
+      },
+      "access_log": {
+        "name": "출입 기록"
       }
     },
     "switch": {
